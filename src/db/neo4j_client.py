@@ -1,7 +1,9 @@
 """Neo4j connection and utilities."""
 
+from typing import Any
+
 from neo4j import GraphDatabase
-from typing import List, Dict, Any
+
 from src.config import NEO4J_CONFIG
 
 
@@ -27,7 +29,7 @@ class Neo4jClient:
             # TODO: Implement the Cypher query
             pass
 
-    def get_recommendations(self, user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def get_recommendations(self, user_id: str, limit: int = 5) -> list[dict[str, Any]]:
         """Get product recommendations for a user."""
         # TODO: Implement recommendation query
         pass

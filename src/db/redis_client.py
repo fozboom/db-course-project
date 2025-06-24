@@ -1,16 +1,18 @@
 """Redis connection and utilities."""
 
-import redis
 import json
-from typing import Optional, Any
-from src.config import REDIS_CONFIG, CACHE_TTL
+from typing import Any
+
+import redis
+
+from src.config import CACHE_TTL, REDIS_CONFIG
 
 
 class RedisClient:
     def __init__(self):
         self.client = redis.Redis(**REDIS_CONFIG)
 
-    def get_json(self, key: str) -> Optional[Any]:
+    def get_json(self, key: str) -> Any | None:
         """Get JSON data from Redis."""
         data = self.client.get(key)
         return json.loads(data) if data else None
