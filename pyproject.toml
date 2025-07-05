@@ -16,6 +16,12 @@ dependencies = [
     "pgvector>=0.2.4",
     "click>=8.1.7",
     "rich>=13.7.0",
+    "faker>=37.4.0",
+    "psycopg2-binary",
+    "ruff",
+    "pgvector",
+    "fastapi",
+    "uvicorn[standard]",
 ]
 
 [project.optional-dependencies]
@@ -66,3 +72,6 @@ line-ending = "auto"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+
+[tool.rye]
+# ... existing code ...
