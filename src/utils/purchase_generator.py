@@ -5,7 +5,9 @@ import uuid
 from datetime import datetime, timedelta
 
 import pandas as pd
+from tqdm import tqdm
 
+from src.db.neo4j_client import neo4j_client
 from src.db.postgres_client import db
 from src.utils.data_parser import DataParser
 
@@ -62,11 +64,11 @@ class PurchaseGenerator:
 
         purchases_df = pd.DataFrame(purchases)
 
-        order_totals = (
-            purchases_df.groupby("order_id")
-            .apply(lambda x: (x["price_at_purchase"] * x["quantity"]).sum())
-            .rename("total_price")
+        # Calculate total price per order and merge it back
+        order_totals = purchases_df.groupby("order_id")[["price_at_purchase", "quantity"]].apply(
+            lambda r: (r["price_at_purchase"] * r["quantity"]).sum()
         )
+        order_totals.name = "total_price"
         purchases_df = purchases_df.merge(order_totals, on="order_id")
 
         return purchases_df
@@ -77,9 +79,9 @@ class PurchaseGenerator:
             print("No purchases to load into PostgreSQL.")
             return
 
-        orders = purchases_df[["order_id", "user_id", "order_date", "status", "total_price"]].drop_duplicates(
-            "order_id"
-        )
+        orders_df = purchases_df[["order_id", "user_id", "order_date", "status", "total_price"]]
+        assert isinstance(orders_df, pd.DataFrame)
+        orders = orders_df.drop_duplicates(subset="order_id")
 
         order_items = purchases_df[["order_id", "product_id", "quantity", "price_at_purchase"]]
 
@@ -117,8 +119,23 @@ class PurchaseGenerator:
 
     def load_into_neo4j(self, purchases_df: pd.DataFrame):
         """Load purchases into Neo4j."""
-        print("Neo4j loading is not implemented yet.")
-        pass  # TODO: Implement Neo4j loading
+        if purchases_df.empty:
+            print("No purchases to load into Neo4j.")
+            return
+
+        # Use a minimal DataFrame for Neo4j to avoid type issues
+        neo4j_df = purchases_df[["user_id", "product_id", "quantity", "order_date"]]
+        assert isinstance(neo4j_df, pd.DataFrame)
+        neo4j_data = neo4j_df.to_dict("records")
+
+        for purchase in tqdm(neo4j_data, desc="Loading Purchases into Neo4j"):
+            neo4j_client.add_purchase(
+                user_id=str(purchase["user_id"]),
+                product_id=str(purchase["product_id"]),
+                quantity=int(purchase["quantity"]),
+                date=purchase["order_date"],
+            )
+        print(f"Loaded {len(neo4j_data)} purchase relationships into Neo4j.")
 
 
 if __name__ == "__main__":
