@@ -3,6 +3,7 @@
 from contextlib import contextmanager
 
 import psycopg2
+from pgvector.psycopg2 import register_vector
 from psycopg2.extras import RealDictCursor
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -39,6 +40,7 @@ class PostgresConnection:
     def get_cursor(self):
         """Get a database cursor for raw SQL queries."""
         conn = psycopg2.connect(**self.config)
+        register_vector(conn)
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 yield cursor
