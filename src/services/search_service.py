@@ -1,6 +1,7 @@
 """Service for semantic product search using vector embeddings."""
 
 import hashlib
+from typing import Any
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -22,7 +23,10 @@ class SemanticSearchService:
         return f"semantic_search:{hashlib.md5(param_string.encode()).hexdigest()}"
 
     def _get_embedding(self, text: str) -> np.ndarray:
-        return self.model.encode(text)
+        embedding = self.model.encode(text)
+        if not isinstance(embedding, np.ndarray):
+            return np.array(embedding)
+        return embedding
 
     def natural_language_search(
         self,
@@ -62,7 +66,7 @@ class SemanticSearchService:
             LEFT JOIN categories c ON p.category_id = c.id
             WHERE 1=1
         """
-        sql_params = [query_embedding]
+        sql_params: list[Any] = [query_embedding]
 
         if category:
             sql += " AND c.name = %s"
