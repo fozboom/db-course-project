@@ -1,5 +1,6 @@
 """Neo4j connection and utilities."""
 
+from datetime import datetime
 from typing import Any
 
 from neo4j import GraphDatabase
@@ -11,6 +12,7 @@ class Neo4jClient:
     def __init__(self):
         self.driver = GraphDatabase.driver(NEO4J_CONFIG["uri"], auth=(NEO4J_CONFIG["user"], NEO4J_CONFIG["password"]))
 
+
     def close(self):
         self.driver.close()
 
@@ -21,18 +23,73 @@ class Neo4jClient:
             session.run("CREATE CONSTRAINT user_id IF NOT EXISTS FOR (u:User) REQUIRE u.id IS UNIQUE")
             # Product constraint
             session.run("CREATE CONSTRAINT product_id IF NOT EXISTS FOR (p:Product) REQUIRE p.id IS UNIQUE")
+            # Category constraint
+            session.run("CREATE CONSTRAINT category_id IF NOT EXISTS FOR (c:Category) REQUIRE c.id IS UNIQUE")
             # TODO: Add more constraints
 
-    def add_purchase(self, user_id: str, product_id: str, quantity: int, date: str):
+    def add_view(self, user_id: str, product_id: str):
+        """Add a VIEWED relationship."""
+        with self.driver.session() as session:
+            session.run(
+                """
+                MATCH (u:User {id: $user_id})
+                MATCH (p:Product {id: $product_id})
+                CREATE (u)-[:VIEWED {timestamp: $timestamp}]->(p)
+                """,
+                user_id=user_id,
+                product_id=product_id,
+                timestamp=datetime.now().isoformat(),
+            )
+
+    def add_purchase(self, user_id: str, product_id: str, quantity: int, date: Any):
         """Add a purchase relationship."""
         with self.driver.session() as session:
-            # TODO: Implement the Cypher query
-            pass
+            session.run(
+                """
+                MATCH (u:User {id: $user_id})
+                MATCH (p:Product {id: $product_id})
+                CREATE (u)-[:PURCHASED {quantity: $quantity, date: $date}]->(p)
+                """,
+                user_id=user_id,
+                product_id=product_id,
+                quantity=quantity,
+                date=date,
+            )
 
-    def get_recommendations(self, user_id: str, limit: int = 5) -> list[dict[str, Any]]:
-        """Get product recommendations for a user."""
-        # TODO: Implement recommendation query
-        pass
+    def get_recommendations(self, user_id: str, limit: int = 5):
+        """Get product recommendations for a user based on collaborative filtering."""
+        with self.driver.session() as session:
+            result = session.run(
+                """
+                MATCH (target:User {id: $user_id})-[:PURCHASED]->(p:Product)<-[:PURCHASED]-(other:User)
+                MATCH (other)-[:PURCHASED]->(rec:Product)
+                WHERE NOT (target)-[:PURCHASED]->(rec)
+                WITH rec, count(*) as frequency
+                ORDER BY frequency DESC
+                LIMIT $limit
+                RETURN rec.id as product_id, rec.name as product_name
+                """,
+                user_id=user_id,
+                limit=limit,
+            )
+            return [record.data() for record in result]
+
+    def get_also_bought_products(self, product_id: str, limit: int = 5):
+        """Get products that are frequently bought by users who purchased a specific product."""
+        with self.driver.session() as session:
+            result = session.run(
+                """
+                MATCH (:Product {id: $product_id})<-[:PURCHASED]-(u:User)-[:PURCHASED]->(other:Product)
+                WHERE other.id <> $product_id
+                WITH other, count(u) as purchase_count
+                ORDER BY purchase_count DESC
+                LIMIT $limit
+                RETURN other.id as product_id, other.name as product_name
+                """,
+                product_id=product_id,
+                limit=limit,
+            )
+            return [record.data() for record in result]
 
 
 # Singleton instance
