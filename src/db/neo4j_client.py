@@ -17,15 +17,18 @@ class Neo4jClient:
         self.driver.close()
 
     def create_constraints(self):
-        """Create uniqueness constraints."""
+        """Create uniqueness and existence constraints."""
         with self.driver.session() as session:
-            # User constraint
+            # Uniqueness constraints (also create indexes)
             session.run("CREATE CONSTRAINT user_id IF NOT EXISTS FOR (u:User) REQUIRE u.id IS UNIQUE")
-            # Product constraint
             session.run("CREATE CONSTRAINT product_id IF NOT EXISTS FOR (p:Product) REQUIRE p.id IS UNIQUE")
-            # Category constraint
             session.run("CREATE CONSTRAINT category_id IF NOT EXISTS FOR (c:Category) REQUIRE c.id IS UNIQUE")
-            # TODO: Add more constraints
+
+            # Property existence constraints
+            session.run("CREATE CONSTRAINT user_name IF NOT EXISTS FOR (u:User) REQUIRE u.name IS NOT NULL")
+            session.run("CREATE CONSTRAINT product_name IF NOT EXISTS FOR (p:Product) REQUIRE p.name IS NOT NULL")
+            session.run("CREATE CONSTRAINT category_name IF NOT EXISTS FOR (c:Category) REQUIRE c.name IS NOT NULL")
+            print("Neo4j constraints created.")
 
     def add_view(self, user_id: str, product_id: str):
         """Add a VIEWED relationship."""
