@@ -29,3 +29,12 @@ def get_also_bought(product_id: str):
     if not also_bought:
         return {"message": "Could not find any related products."}
     return {"product_id": product_id, "also_bought": also_bought}
+
+
+@router.get("/products/frequently-bought-together")
+def get_frequently_bought_together(limit: int = 10):
+    """
+    Gets globally popular pairs of products that are frequently bought together.
+    """
+    pairs = neo4j_client.get_frequently_bought_together(limit)
+    return {"frequently_bought_together": pairs}

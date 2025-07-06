@@ -94,6 +94,25 @@ class Neo4jClient:
             )
             return [record.data() for record in result]
 
+    def get_frequently_bought_together(self, limit: int = 10):
+        """Finds pairs of products that are frequently purchased together across all users."""
+        with self.driver.session() as session:
+            result = session.run(
+                """
+                MATCH (u:User)-[:PURCHASED]->(p1:Product),
+                      (u)-[:PURCHASED]->(p2:Product)
+                WHERE id(p1) < id(p2)
+                WITH p1, p2, count(u) AS purchase_count
+                ORDER BY purchase_count DESC
+                LIMIT $limit
+                RETURN p1.id AS product1_id, p1.name AS product1_name,
+                       p2.id AS product2_id, p2.name AS product2_name,
+                       purchase_count
+                """,
+                limit=limit,
+            )
+            return [record.data() for record in result]
+
 
 # Singleton instance
 neo4j_client = Neo4jClient()
