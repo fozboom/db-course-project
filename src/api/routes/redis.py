@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from src.api.models import CartItem
+from src.api.models import CartItem, CartItemUpdate
 from src.db.redis_client import redis_client
 from src.services import product_service
 from src.services.cart_service import cart_service
@@ -54,8 +54,21 @@ def get_cache_metrics():
 @router.post("/cart/{user_id}")
 def add_item_to_cart(user_id: str, item: CartItem):
     """Adds a product to the user's shopping cart (stored in a Redis Hash)."""
-    cart_service.add_to_cart(user_id, item.product_id, item.quantity)
-    return {"message": f"Added {item.quantity} of product {item.product_id} to cart for user {user_id}."}
+    try:
+        cart_service.add_to_cart(user_id, item.product_id, item.quantity)
+        return {"message": f"Added {item.quantity} of product {item.product_id} to cart for user {user_id}."}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.put("/cart/{user_id}/items/{product_id}")
+def update_cart_item_quantity(user_id: str, product_id: str, item_update: CartItemUpdate):
+    """Updates the quantity of a specific item in the cart. A quantity of 0 will remove the item."""
+    try:
+        cart_service.update_item_quantity(user_id, product_id, item_update.quantity)
+        return {"message": f"Updated product {product_id} quantity to {item_update.quantity} for user {user_id}."}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/cart/{user_id}")
@@ -69,3 +82,10 @@ def remove_item_from_cart(user_id: str, product_id: str):
     """Removes a specific item from a user's shopping cart in Redis."""
     cart_service.remove_from_cart(user_id, product_id)
     return {"message": f"Removed product {product_id} from cart for user {user_id}."}
+
+
+@router.delete("/cart/{user_id}")
+def clear_user_cart(user_id: str):
+    """Clears all items from a user's shopping cart."""
+    cart_service.clear_cart(user_id)
+    return {"message": f"Cart for user {user_id} has been cleared."}
