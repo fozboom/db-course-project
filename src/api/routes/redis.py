@@ -89,3 +89,13 @@ def clear_user_cart(user_id: str):
     """Clears all items from a user's shopping cart."""
     cart_service.clear_cart(user_id)
     return {"message": f"Cart for user {user_id} has been cleared."}
+
+
+@router.post("/cart/{user_id}/checkout")
+def checkout(user_id: str):
+    """Converts the user's cart into an order."""
+    try:
+        result = cart_service.convert_cart_to_order(user_id)
+        return {"message": "Order created successfully", "order_details": result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
