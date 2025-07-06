@@ -20,6 +20,9 @@ class DocumentLoader:
         print("Clearing existing document data...")
         self.clear_collections()
 
+        print("Creating MongoDB indexes...")
+        self.mongo.create_indexes()
+
         print("Loading user preferences...")
         self.load_user_preferences()
 
